@@ -1,4 +1,16 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+
+const revokedTokens = new Set();
+
+setInterval(() => {
+  const now = Math.floor(Date.now() / 1000);
+  for (const entry of revokedTokens) {
+    if (entry.exp <= now) {
+      revokedTokens.delete(entry);
+    }
+  }
+}, 60 * 60 * 1000);
 
 const protect = (req, res, next) => {
   let token;
@@ -8,15 +20,17 @@ const protect = (req, res, next) => {
     req.headers.authorization.startsWith('Bearer')
   ) {
     try {
-      // Get token from header
       token = req.headers.authorization.split(' ')[1];
 
-      // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      
-      // We can attach user details to request if needed, but for now just pass
+
+      if (revokedTokens.has(decoded.jti)) {
+        res.status(401);
+        return next(new Error('Token has been revoked'));
+      }
+
       req.user = decoded;
-      
+
       next();
     } catch (error) {
       res.status(401);
@@ -30,4 +44,14 @@ const protect = (req, res, next) => {
   }
 };
 
-module.exports = { protect };
+const revokeToken = (token) => {
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    revokedTokens.add(decoded.jti);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+module.exports = { protect, revokeToken };

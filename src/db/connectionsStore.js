@@ -1,4 +1,5 @@
 const { SavedConnection } = require('./sequelize');
+const { encrypt, decrypt } = require('./crypto');
 
 const getConnectionsList = async () => {
   try {
@@ -16,7 +17,12 @@ const getConnectionsList = async () => {
 const getConnectionById = async (id) => {
   try {
     const connection = await SavedConnection.findByPk(id);
-    return connection ? connection.get({ plain: true }) : null;
+    if (!connection) return null;
+    const plain = connection.get({ plain: true });
+    if (plain.password) {
+      plain.password = decrypt(plain.password);
+    }
+    return plain;
   } catch (err) {
     console.error(`Failed to retrieve connection profile by id ${id} from Postgres:`, err);
     return null;
@@ -25,7 +31,6 @@ const getConnectionById = async (id) => {
 
 const saveConnectionConfig = async (config) => {
   try {
-    // Check if identical config exists (excluding password) to prevent duplicate profiles
     const existing = await SavedConnection.findOne({
       where: {
         type: config.type,
@@ -36,11 +41,12 @@ const saveConnectionConfig = async (config) => {
       }
     });
 
+    const encryptedPassword = encrypt(config.password || '');
+
     let result;
     if (existing) {
-      // Update password
       await existing.update({
-        password: config.password || ''
+        password: encryptedPassword
       });
       result = existing;
     } else {
@@ -50,7 +56,7 @@ const saveConnectionConfig = async (config) => {
         port: Number(config.port),
         database: config.database,
         username: config.username,
-        password: config.password || ''
+        password: encryptedPassword
       });
     }
 

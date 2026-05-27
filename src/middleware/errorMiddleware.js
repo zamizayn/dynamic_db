@@ -6,11 +6,13 @@ const notFound = (req, res, next) => {
 
 const errorHandler = (err, req, res, next) => {
   const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  if (process.env.NODE_ENV !== 'production') {
+    console.error(`[${new Date().toISOString()}] ${err.stack || err.message}`);
+  }
   res.status(statusCode);
   res.json({
     success: false,
-    message: err.message,
-    stack: process.env.NODE_ENV === 'production' ? '🥞' : err.stack,
+    message: statusCode === 500 ? 'Internal server error' : err.message,
   });
 };
 

@@ -6,6 +6,7 @@ const {
   getTableData,
   insertRecord,
   updateRecord,
+  deleteRecord,
   getForeignKeys,
   getTableMetadata,
   aggregateTableData,
@@ -14,49 +15,42 @@ const {
   getSavedConnections,
   saveConnectionConfig,
   deleteSavedConnection,
-  connectSavedDatabase
+  connectSavedDatabase,
+  disconnectDB
 } = require('../controllers/dbController');
-const { validateSessionId, validateConnectParams } = require('../middleware/validationMiddleware');
+const { validateSessionId, validateConnectParams, validateTableName } = require('../middleware/validationMiddleware');
 const { protect } = require('../middleware/authMiddleware');
 const { apiLimiter, connectLimiter } = require('../middleware/rateLimitMiddleware');
 
-// Apply general API rate limiter to all DB routes
 router.use(apiLimiter);
 
-// 1. Create Database Connection (Stricter rate limit)
 router.post('/connect', protect, connectLimiter, validateConnectParams, connectDB);
 
-// Connection Manager persistent hub endpoints
 router.get('/connections', protect, getSavedConnections);
 router.post('/connections', protect, saveConnectionConfig);
 router.delete('/connections/:id', protect, deleteSavedConnection);
-router.post('/connections/connect/:id', protect, connectSavedDatabase);
+router.post('/connections/connect/:id', protect, connectLimiter, connectSavedDatabase);
 
-// 2. Fetch All Tables
 router.get('/tables/:sessionId', protect, validateSessionId, getTables);
 
-// 3. Fetch Table Data
-router.get('/table/:sessionId/:table', protect, validateSessionId, getTableData);
+router.delete('/disconnect/:sessionId', protect, validateSessionId, disconnectDB);
 
-// 3.5. Fetch Table Foreign Keys
-router.get('/table/:sessionId/:table/fks', protect, validateSessionId, getForeignKeys);
+router.get('/table/:sessionId/:table', protect, validateSessionId, validateTableName, getTableData);
 
-// 3.6. Fetch Table Column Metadata
-router.get('/table/:sessionId/:table/metadata', protect, validateSessionId, getTableMetadata);
+router.get('/table/:sessionId/:table/fks', protect, validateSessionId, validateTableName, getForeignKeys);
 
-// 3.7. Fetch Table Column Dynamic Aggregation
-router.post('/table/:sessionId/:table/aggregate', protect, validateSessionId, aggregateTableData);
+router.get('/table/:sessionId/:table/metadata', protect, validateSessionId, validateTableName, getTableMetadata);
 
-// 3.8. Fetch Table Multi-Dimension Pivot Aggregation
-router.post('/table/:sessionId/:table/pivot', protect, validateSessionId, pivotTableData);
+router.post('/table/:sessionId/:table/aggregate', protect, validateSessionId, validateTableName, aggregateTableData);
 
-// 3.9. Fetch Table Health Stats & Metadata completeness score
-router.get('/table/:sessionId/:table/health', protect, validateSessionId, getTableHealth);
+router.post('/table/:sessionId/:table/pivot', protect, validateSessionId, validateTableName, pivotTableData);
 
-// 4. Insert Record
-router.post('/table/:sessionId/:table', protect, validateSessionId, insertRecord);
+router.get('/table/:sessionId/:table/health', protect, validateSessionId, validateTableName, getTableHealth);
 
-// 5. Update Record
-router.put('/table/:sessionId/:table', protect, validateSessionId, updateRecord);
+router.post('/table/:sessionId/:table', protect, validateSessionId, validateTableName, insertRecord);
+
+router.put('/table/:sessionId/:table', protect, validateSessionId, validateTableName, updateRecord);
+
+router.delete('/table/:sessionId/:table', protect, validateSessionId, validateTableName, deleteRecord);
 
 module.exports = router;

@@ -1,6 +1,6 @@
 # Dependency directories
 node_modules
-admin-panel/node_modules/
+admin-panel/node_modules
 
 # Production builds
 dist/

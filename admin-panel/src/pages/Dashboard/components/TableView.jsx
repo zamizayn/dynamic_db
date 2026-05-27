@@ -2,6 +2,7 @@ import { useState, useEffect, useContext } from 'react';
 import { useParams } from 'react-router-dom';
 import { fetchWithAuth } from '../../../utils/api';
 import { AuthContext } from '../../../context/AuthContext';
+import { useToast } from '../../../components/Toast';
 import { Save, Plus, Edit2, Check, X } from 'lucide-react';
 
 export default function TableView() {
@@ -23,6 +24,8 @@ export default function TableView() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  const toast = useToast();
+
   useEffect(() => {
     setCurrentPage(1);
   }, [table]);
@@ -32,7 +35,7 @@ export default function TableView() {
   };
 
   const getOptionLabel = (row, refCol) => {
-    const descCol = Object.keys(row).find(k => 
+    const descCol = Object.keys(row).find(k =>
       ['name', 'title', 'label', 'email', 'username', 'key'].includes(k.toLowerCase())
     );
     return descCol ? `${row[descCol]} (${row[refCol]})` : `${row[refCol]}`;
@@ -40,7 +43,7 @@ export default function TableView() {
 
   const renderColInput = (col, value, onChange, placeholder = '') => {
     const fk = getFkForCol(col);
-    
+
     if (fk) {
       const options = referencedOptions[fk.referenced_table_name] || [];
       return (
@@ -79,7 +82,6 @@ export default function TableView() {
   const startEditing = (index, row) => {
     setEditingIndex(index);
     const copy = { ...row };
-    // Format JSON/Objects to string for simple editing
     Object.keys(copy).forEach(key => {
       if (copy[key] && typeof copy[key] === 'object') {
         copy[key] = JSON.stringify(copy[key]);
@@ -92,7 +94,6 @@ export default function TableView() {
     try {
       const originalRow = data[index];
 
-      // Determine unique row conditions for safety
       let conditions = {};
       const idKey = Object.keys(originalRow).find(k => k.toLowerCase() === 'id' || k.toLowerCase() === 'uuid');
       if (idKey && originalRow[idKey] !== undefined && originalRow[idKey] !== null) {
@@ -101,7 +102,6 @@ export default function TableView() {
         conditions = { ...originalRow };
       }
 
-      // Convert edited inputs back to correct types
       const updateData = {};
       Object.keys(editingData).forEach(key => {
         const val = editingData[key];
@@ -109,7 +109,7 @@ export default function TableView() {
           try {
             updateData[key] = JSON.parse(val);
           } catch (e) {
-            updateData[key] = val; // Default fallback to string
+            updateData[key] = val;
           }
         } else if (typeof originalRow[key] === 'boolean') {
           updateData[key] = val === 'true' || val === true;
@@ -135,11 +135,12 @@ export default function TableView() {
         setData(newData);
         setEditingIndex(null);
         setEditingData({});
+        toast('Record updated successfully', 'success');
       } else {
-        alert("Update failed: " + (res.message || "Unknown error"));
+        toast(res.message || 'Update failed');
       }
     } catch (err) {
-      alert("Update failed: " + err.message);
+      toast(err.message);
     }
   };
 
@@ -147,26 +148,23 @@ export default function TableView() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // 1. Fetch Main Table Data
         const res = await fetchWithAuth(`/table/${sessionId}/${table}`);
         if (res.success) {
           setData(res.data);
           if (res.data.length > 0) {
             setColumns(Object.keys(res.data[0]));
           } else {
-            setColumns([]); 
+            setColumns([]);
           }
         }
 
-        // 2. Fetch Table Foreign Keys
         const fksRes = await fetchWithAuth(`/table/${sessionId}/${table}/fks`);
         if (fksRes.success) {
           setForeignKeys(fksRes.fks);
 
-          // 3. Fetch options for each unique referenced table concurrently
           const uniqueTables = [...new Set(fksRes.fks.map(fk => fk.referenced_table_name))];
           const optionsMap = {};
-          
+
           await Promise.all(
             uniqueTables.map(async (refTable) => {
               try {
@@ -187,7 +185,7 @@ export default function TableView() {
         setLoading(false);
       }
     };
-    
+
     if (table) fetchData();
   }, [table, sessionId]);
 
@@ -201,9 +199,10 @@ export default function TableView() {
         setData([...data, insertData]);
         setIsInserting(false);
         setInsertData({});
+        toast('Record inserted successfully', 'success');
       }
     } catch (err) {
-      alert("Insert failed: " + err.message);
+      toast(err.message);
     }
   };
 
@@ -321,7 +320,6 @@ export default function TableView() {
         </table>
       </div>
 
-      {/* Pagination Controls */}
       {data.length > itemsPerPage && (
         <div style={{
           display: 'flex',
@@ -334,7 +332,6 @@ export default function TableView() {
           borderRadius: '12px',
           boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.2)'
         }}>
-          {/* Info status */}
           <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
             Showing <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{indexOfFirstItem + 1}</span> to{' '}
             <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
@@ -342,13 +339,11 @@ export default function TableView() {
             </span> of <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{data.length}</span> entries
           </div>
 
-          {/* Navigation Controls */}
           <div style={{ display: 'flex', gap: '6px' }}>
             <button
               className="btn btn-secondary"
               style={{
-                padding: '6px 12px',
-                fontSize: '0.85rem',
+                padding: '6px 12px', fontSize: '0.85rem',
                 opacity: currentPage === 1 ? 0.4 : 1,
                 cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
               }}
@@ -360,8 +355,7 @@ export default function TableView() {
             <button
               className="btn btn-secondary"
               style={{
-                padding: '6px 12px',
-                fontSize: '0.85rem',
+                padding: '6px 12px', fontSize: '0.85rem',
                 opacity: currentPage === 1 ? 0.4 : 1,
                 cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
               }}
@@ -371,7 +365,6 @@ export default function TableView() {
               Previous
             </button>
 
-            {/* Dynamic Page Pill Generation */}
             {(() => {
               const totalPages = Math.ceil(data.length / itemsPerPage);
               const maxPagePills = 5;
@@ -390,9 +383,7 @@ export default function TableView() {
                     key={page}
                     className={`btn ${isActive ? 'btn-primary' : 'btn-secondary'}`}
                     style={{
-                      padding: '6px 12px',
-                      fontSize: '0.85rem',
-                      minWidth: '32px',
+                      padding: '6px 12px', fontSize: '0.85rem', minWidth: '32px',
                       boxShadow: isActive ? '0 2px 8px var(--accent-glow)' : 'none',
                       background: isActive ? 'var(--accent-primary)' : 'transparent',
                       borderColor: isActive ? 'var(--accent-primary)' : 'var(--border-glass)'
@@ -409,8 +400,7 @@ export default function TableView() {
             <button
               className="btn btn-secondary"
               style={{
-                padding: '6px 12px',
-                fontSize: '0.85rem',
+                padding: '6px 12px', fontSize: '0.85rem',
                 opacity: currentPage === Math.ceil(data.length / itemsPerPage) ? 0.4 : 1,
                 cursor: currentPage === Math.ceil(data.length / itemsPerPage) ? 'not-allowed' : 'pointer'
               }}
@@ -422,8 +412,7 @@ export default function TableView() {
             <button
               className="btn btn-secondary"
               style={{
-                padding: '6px 12px',
-                fontSize: '0.85rem',
+                padding: '6px 12px', fontSize: '0.85rem',
                 opacity: currentPage === Math.ceil(data.length / itemsPerPage) ? 0.4 : 1,
                 cursor: currentPage === Math.ceil(data.length / itemsPerPage) ? 'not-allowed' : 'pointer'
               }}
@@ -436,22 +425,13 @@ export default function TableView() {
         </div>
       )}
 
-      {/* Edit Record Modal Popup */}
       {editingIndex !== null && (
         <div
           className="modal-overlay active"
           style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(10, 11, 26, 0.8)',
-            backdropFilter: 'blur(8px)',
-            zIndex: 1000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(10, 11, 26, 0.8)', backdropFilter: 'blur(8px)',
+            zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
             animation: 'fadeIn 0.25s ease'
           }}
           onClick={() => { setEditingIndex(null); setEditingData({}); }}
@@ -459,16 +439,9 @@ export default function TableView() {
           <div
             className="glass-panel"
             style={{
-              width: '100%',
-              maxWidth: '600px',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              padding: '32px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '24px',
-              position: 'relative',
-              boxShadow: '0 20px 50px rgba(0, 0, 0, 0.4)',
+              width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto',
+              padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px',
+              position: 'relative', boxShadow: '0 20px 50px rgba(0, 0, 0, 0.4)',
               border: '1px solid rgba(255, 255, 255, 0.12)'
             }}
             onClick={(e) => e.stopPropagation()}
@@ -503,11 +476,8 @@ export default function TableView() {
                         <textarea
                           className="form-input"
                           style={{
-                            fontFamily: 'monospace',
-                            fontSize: '0.85rem',
-                            minHeight: '120px',
-                            resize: 'vertical',
-                            background: 'rgba(255, 255, 255, 0.02)'
+                            fontFamily: 'monospace', fontSize: '0.85rem', minHeight: '120px',
+                            resize: 'vertical', background: 'rgba(255, 255, 255, 0.02)'
                           }}
                           value={editingData[col] || ''}
                           onChange={(e) => setEditingData({ ...editingData, [col]: e.target.value })}
@@ -532,10 +502,7 @@ export default function TableView() {
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                >
+                <button type="submit" className="btn btn-primary">
                   <Save size={16} /> Save Changes
                 </button>
               </div>
