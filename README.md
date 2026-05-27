@@ -33,12 +33,18 @@ The backend acts as an API gateway to client databases. Rather than maintaining 
    NODE_ENV=development
    JWT_SECRET=super_secret_dynamic_db_key_12345
 
-   # PostgreSQL settings for central metadata store
-   DB_HOST=localhost
-   DB_PORT=5432
-   DB_NAME=friska_db
-   DB_USER=postgres
-   DB_PASS=root
+    # PostgreSQL settings for central metadata store
+    DB_HOST=localhost
+    DB_PORT=5432
+    DB_NAME=dynamic_db
+    DB_USER=postgres
+    DB_PASS=root
+
+    # API key for token generation
+    API_KEY=admin_key_123
+
+    # Encryption key for saving DB connection passwords (min 16 chars)
+    ENCRYPTION_KEY=change_me_to_a_random_secret_32
    ```
 
 3. Start the application:
@@ -467,3 +473,4 @@ Update record(s) matching precise condition keys.
    - Prevents empty session parameters.
    - Enforces database types constraint (`mysql`, `postgres`, `pg`).
    - SQL Injection protection exists via parameterization on query bindings and strict regex checks (`/^[a-zA-Z0-9_]+$/`) on table/column parameters.
+# SDSJIJIN
