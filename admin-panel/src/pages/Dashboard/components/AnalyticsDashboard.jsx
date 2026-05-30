@@ -72,7 +72,7 @@ export default function AnalyticsDashboard() {
         setMetadata(cols);
 
         const identifierCol = cols.find(c => c.classification === 'IDENTIFIER') || cols[0];
-        const measureCol = cols.find(c => c.classification === 'MEASURE') || cols.find(c => c.classification === 'IDENTIFIER') || cols[0];
+        const measureCol = cols.find(c => c.classification === 'MEASURE');
         const temporalCol = cols.find(c => c.classification === 'DIMENSION_TEMPORAL');
         const categoricalCol = cols.find(c => c.classification === 'DIMENSION_CATEGORICAL') || cols.find(c => c.classification === 'IDENTIFIER') || cols[0];
 

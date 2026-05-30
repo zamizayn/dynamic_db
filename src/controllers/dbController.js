@@ -210,11 +210,23 @@ const aggregateTableData = async (req, res, next) => {
     validateColumnName(aggregateCol);
     if (filterCol) validateColumnName(filterCol);
 
-    if (!['SUM', 'COUNT', 'AVG', 'MIN', 'MAX'].includes(aggregateFunc.toUpperCase())) {
+    let func = aggregateFunc.toUpperCase();
+
+    if (!['SUM', 'COUNT', 'AVG', 'MIN', 'MAX'].includes(func)) {
       return res.status(400).json({ success: false, message: 'Invalid aggregation function' });
     }
 
-    const func = aggregateFunc.toUpperCase();
+    if (['SUM', 'AVG'].includes(func)) {
+      const columns = await adapter.getTableColumns(session, table);
+      const col = columns.find(c => c.column_name === aggregateCol);
+      if (col) {
+        const numericTypes = ['integer', 'bigint', 'numeric', 'real', 'double precision', 'decimal', 'float', 'int', 'smallint', 'tinyint'];
+        if (!numericTypes.includes(col.data_type.toLowerCase())) {
+          func = 'COUNT';
+        }
+      }
+    }
+
     const joinCfg = await getJoinConfig(session, table, groupBy);
 
     let rows = await adapter.aggregateGroupBy(table, groupBy, aggregateCol, func, joinCfg, filterCol, filterVal);
