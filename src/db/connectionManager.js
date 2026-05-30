@@ -1,4 +1,4 @@
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID: uuidv4 } = require('crypto');
 const mysql = require('mysql2/promise');
 const { Pool: PgPool } = require('pg');
 
